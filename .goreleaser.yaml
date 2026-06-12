@@ -2,7 +2,8 @@ version: 2
 builds:
   - main: .
     binary: pulse
-    env: [CGO_ENABLED=0]
+    env: 
+      - CGO_ENABLED=0
     goos:
       - linux
       - darwin
@@ -15,9 +16,11 @@ builds:
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 
+gitea_urls:
+  api: "https://codeberg.org/api/v1"
 
 nfpms:
   - maintainer: Dylan Marcano (Nxus) <nxusdev@protonmail.com>
     description: Broadcasting your coding status from Neovim to a WebSocket server.
-    homepage: https://github.com/DumbNoxx/pulse.nvim
+    homepage: https://codeberg.org/Nxus/pulse.nvim
     license: MIT

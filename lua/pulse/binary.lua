@@ -24,7 +24,7 @@ function M.ensure_binary()
 	arch = arch_map[arch] or arch
 
 	local binary_name = string.format("pulse.nvim_%s_%s", os, arch)
-	local url = string.format("https://github.com/DumbNoxx/pulse.nvim/releases/latest/download/%s.tar.gz", binary_name)
+	local url = string.format("https://codeberg.org/Nxus/pulse.nvim/releases/download/%s.tar.gz", binary_name)
 
 	local download_cmd = string.format("curl -sL --fail %s | tar -xzf - -C %s", url, bin_dir)
 	local output = vim.fn.system({ "sh", "-c", download_cmd })
