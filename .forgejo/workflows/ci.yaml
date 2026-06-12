@@ -1,0 +1,39 @@
+name: CI/CD
+
+on: [push]
+
+jobs:
+  check:
+    runs-on: codeberg-tiny
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.0"
+      
+      - name: Check Compilation
+        run: go build -v -o /dev/null ./...
+
+
+  build:
+    needs: check
+    runs-on: codeberg-small 
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.2"
+      - name: Run GoReleaser Action
+        run: |
+          unset GITHUB_TOKEN
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              curl -sfL https://goreleaser.com/static/run | bash -s -- release --clean 
+          fi
+        env:
+          GITEA_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

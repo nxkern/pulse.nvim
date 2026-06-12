@@ -39,5 +39,5 @@ function M.ensure_binary()
 
 	return bin_path
 end
-
 return M
+

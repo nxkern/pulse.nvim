@@ -1,6 +1,7 @@
 local M = {}
 function M.setup(opts)
-    opts = opts or {}
+    opts = require("pulse.strictOpts").setup(opts)
+
     local bin = require("pulse.binary").ensure_binary()
     local state = require("pulse.state")
     local commands = require("pulse.commands")
@@ -10,7 +11,6 @@ function M.setup(opts)
         return
     end
     local server_url = opts.server_url or ""
-    local idle_time = opts.idle_time or 30000
     local validate = opts.validate or ""
     local isLocalhost = opts.isLocalhost or false
 
@@ -58,7 +58,7 @@ function M.setup(opts)
         -- end
         vim.schedule_wrap(function()
             if state.job_id and state.countError == 0 then
-                local success, err = pcall(vim.fn.chansend, state.job_id, '{ "status": "", "file": ""}\n')
+                local success, _ = pcall(vim.fn.chansend, state.job_id, '{ "status": "", "file": ""}\n')
                 if not success then
                     state.countError = state.countError + 1
                 end
@@ -72,7 +72,8 @@ function M.setup(opts)
     if not state.pulse_idle_timer then
         return
     end
-    commands.setup(workspace, opts.idle_time or 30000)
+    commands.setup(workspace, opts.idle_time or 30000, opts)
 end
 
 return M
+

@@ -41,3 +41,8 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Nixos
+.direnv
+.envrc
+!.envrc.template
