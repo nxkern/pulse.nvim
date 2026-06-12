@@ -33,7 +33,7 @@ jobs:
         run: |
           unset GITHUB_TOKEN
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-              curl -sfL https://goreleaser.com/static/run | bash -s -- release --clean 
+              curl -sfL https://goreleaser.com/static/run | bash -s -- release --clean --parallelism 1 
           fi
         env:
           GITEA_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -39,7 +39,7 @@ function M.setup(workspace, idle_time, opts)
         end,
     })
 
-    vim.keymap.set("n", opts.keymap.idle, function()
+    vim.keymap.set("n", opts.keymaps.idle, function()
         if state.job_id and state.job_id > 0 then
             vim.fn.chansend(state.job_id, '{ "status": "idle", "file": ""}\n')
             state.currentStatus = "idle"
@@ -47,7 +47,7 @@ function M.setup(workspace, idle_time, opts)
         end
     end, { desc = "󰒲 Set status to idle" })
 
-    vim.keymap.set("n", opts.keymap.busy, function()
+    vim.keymap.set("n", opts.keymaps.busy, function()
         if state.job_id and state.job_id > 0 then
             vim.fn.chansend(state.job_id, '{ "status": "busy", "file": ""}\n')
             state.currentStatus = "busy"
@@ -55,7 +55,7 @@ function M.setup(workspace, idle_time, opts)
         end
     end, { desc = "󰗖 Set status to busy" })
 
-    vim.keymap.set("n", opts.keymap.online, function()
+    vim.keymap.set("n", opts.keymaps.online, function()
         if state.job_id and state.job_id > 0 then
             vim.fn.chansend(state.job_id, string.format('{ "status": "online", "file": "%s"}\n', workspace))
             state.currentStatus = "online"

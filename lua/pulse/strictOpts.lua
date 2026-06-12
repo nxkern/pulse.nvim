@@ -27,12 +27,12 @@ function M.setup(opts)
         opts.server_url = nil
     end
 
-    if validate and type(validate) then
+    if validate and type(validate) ~= nil then
         vim.notify("Pulse: 'validate' must be a string", vim.log.levels.WARN)
         opts.validate = nil
     end
 
-    if localHost ~= nil and type(localHost) then
+    if localHost ~= nil and type(localHost) ~= nil then
         vim.notify("Pulse: 'isLocalhost' must be a boolean", vim.log.levels.WARN)
         opts.isLocalhost = nil
     end
