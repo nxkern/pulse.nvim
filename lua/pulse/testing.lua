@@ -7,7 +7,7 @@ function M.setup()
         return
     end
     vim.schedule_wrap(function()
-        if vim.fn.chansend(state.job_id, '{"status": "testing", "file": ""}') == 1 then
+        if vim.fn.chansend(state.job_id, '{"status": "testing", "file": "", "id": "wsServer"}') == 1 then
             state.countError = state.countError + 1;
             return
         end

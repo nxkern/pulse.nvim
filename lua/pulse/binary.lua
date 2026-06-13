@@ -1,6 +1,6 @@
 local M = {}
 
-function M.ensure_binary()
+function M.setup()
 	local info = debug.getinfo(1, "S").source
 	if info:sub(1, 1) ~= "@" then
 		return nil

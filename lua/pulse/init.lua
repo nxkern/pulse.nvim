@@ -2,9 +2,7 @@ local M = {}
 function M.setup(opts)
     opts = require("pulse.strictOpts").setup(opts)
 
-    local bin = require("pulse.binary").ensure_binary()
-    local state = require("pulse.state")
-    local commands = require("pulse.commands")
+    local bin = require("pulse.binary").setup()
 
     if not bin or vim.fn.executable(bin) == 0 then
         vim.notify("Pulse: Binary not found or download failed", vim.log.levels.ERROR)
@@ -13,11 +11,8 @@ function M.setup(opts)
     local server_url = opts.server_url or ""
     local validate = opts.validate or ""
     local isLocalhost = opts.isLocalhost or false
-
+    local state = require("pulse.state")
     local cmd = { bin, server_url, validate, isLocalhost }
-    local path = vim.fn.getcwd()
-    local workspace = vim.fn.fnamemodify(path, ":t")
-
     if state.job_id then
         vim.fn.jobstop(state.job_id)
     end
@@ -39,41 +34,9 @@ function M.setup(opts)
             vim.notify("Process closed with code: " .. c, vim.log.levels.WARN)
         end,
     })
-    if state.pulse_idle_timer then
-        if not state.pulse_idle_timer:is_closing() then
-            state.pulse_idle_timer:stop()
-            state.pulse_idle_timer:close()
-        end
-    end
-    local uv = vim.uv or vim.loop
-    state.pulse_idle_timer = uv.new_timer()
-    state.pulse_timer = uv.new_timer()
 
-
-    state.pulse_timer:start(
-        20000,
-        20000,
-        -- if state.job_id then
-        --     vim.fn.chansend(state.job_id, '{ "status": "", "file": ""}\n')
-        -- end
-        vim.schedule_wrap(function()
-            if state.job_id and state.countError == 0 then
-                local success, _ = pcall(vim.fn.chansend, state.job_id, '{ "status": "", "file": ""}\n')
-                if not success then
-                    state.countError = state.countError + 1
-                end
-            end
-        end)
-    )
-
-    vim.fn.chansend(state.job_id, string.format('{ "status": "online", "file": "%s"}\n', workspace))
-    state.currentStatus = "online"
-
-    if not state.pulse_idle_timer then
-        return
-    end
-    commands.setup(workspace, opts.idle_time or 30000, opts)
+    require("pulse.wsServer.wsServer").setup(opts, state)
+    require("pulse.discord.discordIPC").setup(state)
 end
 
 return M
-

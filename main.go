@@ -2,17 +2,28 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
+	"encoding/binary"
 	"fmt"
+	"io"
+	"math/rand"
 	"os"
 	"regexp"
+	"strconv"
 	"time"
 
-	"github.com/DumbNoxx/pulse.nvim/internal"
+	"codeberg.org/Nxus/pulse.nvim/internal"
+	"codeberg.org/Nxus/pulse.nvim/internal/discord/discord"
+	"codeberg.org/Nxus/pulse.nvim/internal/discord/utils"
 )
 
 var (
 	re = regexp.MustCompile(`:\d{1,4}`)
+)
+
+const (
+	discordAppID = "1515452982471164065"
 )
 
 func handleIdleTimeout(key string, url string) {
@@ -32,11 +43,12 @@ func cleanUrl(url string) string {
 
 func main() {
 	var (
-		err           error
-		serverAddr    string
-		validateToken string
-		isLocalhost   bool
-		config        *tls.Config
+		err            error
+		serverAddr     string
+		validateToken  string
+		isLocalhost    bool
+		config         *tls.Config
+		flagDiscordIPC bool
 	)
 
 	if len(os.Args) > 1 {
@@ -56,22 +68,61 @@ func main() {
 			isLocalhost = true
 		}
 	}
-	conn := internal.HandleWs(serverAddr, err, validateToken, isLocalhost, config)
-	defer conn.Close()
+	tim := time.Now().UnixMilli()
+	id, err := utils.DynamicUuid()
+	if err != nil {
+		id = strconv.Itoa(rand.Int())
+	}
+	connWSocketServer := internal.HandleWs(serverAddr, err, validateToken, isLocalhost, config)
+	defer connWSocketServer.Close()
+	go handleIdleTimeout(validateToken, fmt.Sprintf("https://%s", cleanUrl(serverAddr)))
+	connDiscordIPC := discord.ConnectIPC()
+	if connDiscordIPC == nil {
+		flagDiscordIPC = true
+	}
+	if !flagDiscordIPC {
+		if err := utils.SendHandshake(connDiscordIPC, discordAppID); err != nil {
+			fmt.Fprintf(os.Stderr, "error send handshake: %v", err)
+			flagDiscordIPC = true
+		}
+		if !flagDiscordIPC {
+			var buf = make([]byte, 8)
+			if _, err := connDiscordIPC.Read(buf); err != nil {
+				fmt.Fprintf(os.Stderr, "error read connDiscordIPC: %v", err)
+				flagDiscordIPC = true
+			} else {
+				lengthJson := binary.LittleEndian.Uint32(buf[4:8])
+				var bufPayload = make([]byte, lengthJson)
+				if _, err := io.ReadFull(connDiscordIPC, bufPayload); err != nil {
+					fmt.Fprintf(os.Stderr, "error read payload: %v\n", err)
+					flagDiscordIPC = true
+				} else if !bytes.Contains(bufPayload, []byte("READY")) {
+					fmt.Fprintf(os.Stderr, "error: discord not responde READY")
+					flagDiscordIPC = true
+				}
+			}
+		}
+	}
 
 	scanner := bufio.NewScanner(os.Stdin)
-	go handleIdleTimeout(validateToken, fmt.Sprintf("https://%s", cleanUrl(serverAddr)))
 	for scanner.Scan() {
 		line := scanner.Bytes()
 		if len(line) == 0 {
 			continue
 		}
 
-		frame := internal.PrepareData(line)
-		_, err := conn.Write(frame)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
-			os.Exit(1)
+		if bytes.Contains(line, []byte("wsServer")) {
+			frame := internal.PrepareData(line)
+			_, err := connWSocketServer.Write(frame)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		if bytes.Contains(line, []byte("connect:")) {
+			if err := discord.SetActivity(connDiscordIPC, string(line), id, tim); err != nil {
+				fmt.Fprintf(os.Stderr, "error: set activity %v", err)
+			}
 		}
 	}
 }

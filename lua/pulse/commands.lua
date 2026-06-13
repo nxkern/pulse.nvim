@@ -9,7 +9,7 @@ local function reset_idle_timer(workspace, idle_time)
     state.pulse_idle_timer:stop()
 
     if state.currentStatus ~= "online" and state.currentStatus ~= "busy" then
-        vim.fn.chansend(state.job_id, string.format('{ "status": "online", "file": "%s"}\n', workspace))
+        vim.fn.chansend(state.job_id, string.format('{ "status": "online", "file": "%s", "id": "wsServer"}\n', workspace))
         state.currentStatus = "online"
     end
 
@@ -18,7 +18,7 @@ local function reset_idle_timer(workspace, idle_time)
         0,
         vim.schedule_wrap(function()
             if state.currentStatus ~= "idle" and state.currentStatus ~= "busy" then
-                vim.fn.chansend(state.job_id, '{ "status": "idle", "file": ""}\n')
+                vim.fn.chansend(state.job_id, '{ "status": "idle", "file": "", "id": "wsServer"}\n')
                 state.currentStatus = "idle"
             end
         end)
@@ -41,7 +41,7 @@ function M.setup(workspace, idle_time, opts)
 
     vim.keymap.set("n", opts.keymaps.idle, function()
         if state.job_id and state.job_id > 0 then
-            vim.fn.chansend(state.job_id, '{ "status": "idle", "file": ""}\n')
+            vim.fn.chansend(state.job_id, '{ "status": "idle", "file": "", "id": "wsServer"}\n')
             state.currentStatus = "idle"
             vim.notify("Pulse: status idle", vim.log.levels.INFO)
         end
@@ -49,7 +49,7 @@ function M.setup(workspace, idle_time, opts)
 
     vim.keymap.set("n", opts.keymaps.busy, function()
         if state.job_id and state.job_id > 0 then
-            vim.fn.chansend(state.job_id, '{ "status": "busy", "file": ""}\n')
+            vim.fn.chansend(state.job_id, '{ "status": "busy", "file": "", "id": "wsServer"}\n')
             state.currentStatus = "busy"
             vim.notify("Pulse: status busy", vim.log.levels.INFO)
         end
@@ -57,7 +57,7 @@ function M.setup(workspace, idle_time, opts)
 
     vim.keymap.set("n", opts.keymaps.online, function()
         if state.job_id and state.job_id > 0 then
-            vim.fn.chansend(state.job_id, string.format('{ "status": "online", "file": "%s"}\n', workspace))
+            vim.fn.chansend(state.job_id, string.format('{ "status": "online", "file": "%s", "id": "wsServer"}\n', workspace))
             state.currentStatus = "online"
             vim.notify("Pulse: status online", vim.log.levels.INFO)
         end
@@ -68,7 +68,7 @@ function M.setup(workspace, idle_time, opts)
     vim.api.nvim_create_autocmd("VimLeavePre", {
         callback = function()
             if state.job_id and state.job_id > 0 then
-                vim.fn.chansend(state.job_id, '{ "status": "offline", "file": ""}\n')
+                vim.fn.chansend(state.job_id, '{ "status": "offline", "file": "", "id": "wsServer"}\n')
             end
         end,
     })
