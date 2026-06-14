@@ -18,17 +18,6 @@ const (
 	UNREDACT_COMMAND = "unredact"
 )
 
-// func HandleInitialCLientConnection(message string, startTime time.Time) bool {
-// 	if strings.Contains(message, "connect") {
-// 		onConnectArguments := strings.Split(message, ":")
-// 		DiscordAppID = onConnectArguments[1]
-// 		fmt.Fprintf(os.Stdout, "Message: %s\n", message)
-// 		UpdateDiscordPresence(&DiscordAppID, &startTime, nil, nil, false)
-// 		return true
-// 	}
-// 	return false
-// }
-
 func ConnectIPC() net.Conn  {
 	var (
 		runtimeDir = utils.GetRuntimeDir()

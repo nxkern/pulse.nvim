@@ -410,19 +410,6 @@ func GetKnowLangs() map[string]string {
 	}
 }
 
-func GetLanguageUrl(extension string, isRedacted bool) string {
-	languages := GetKnowLangs()
-	var language = languages[extension]
-
-	if language == "" || isRedacted {
-		language = "text"
-	}
-	if extension == "." {
-		language = "idle"
-	}
-	return fmt.Sprintf("https://raw.githubusercontent.com/circles-00/nvim-discord-status/main/assets/icons/%s.png", language)
-}
-
 func GetRuntimeDir() string {
 	runtimeDir := os.Getenv("XDG_RUNTIME_DIR")
 	if runtimeDir != "" {

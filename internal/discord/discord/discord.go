@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 )
 
 type Activity struct {
@@ -18,63 +19,21 @@ type Activity struct {
 }
 
 type Assets struct {
-	LargeImage string `json:"large_image"`
-	SmallImage string `json:"small_image"`
+	LargeImage     string `json:"large_image"`
+	LargeImageText string `json:"large_text,omitempty"`
+	SmallImage     string `json:"small_image"`
+	SmallImageText string `json:"small_text,omitempty"`
 }
 
 type TimeStap struct {
 	Start int64 `json:"start,omitempty"`
 }
 
-// func UpdateDiscordPresence(discordAppID *string, t *time.Time, filename *string, gitRepo *string, isRedacted bool) error {
-// 	if discordAppID == nil || len(*discordAppID) == 0 {
-// 		panic("Discord App ID is required")
-// 	}
-//
-// 	fileExtension := ""
-// 	if filename != nil {
-// 		fileExtensionParts := strings.Split(*filename, ".")
-// 		if len(fileExtensionParts) > 1 {
-// 			fileExtension = fileExtensionParts[len(fileExtensionParts)-1]
-// 		}
-// 	}
-// 	extensionImage := utils.GetLanguageUrl(fmt.Sprintf(".%s", fileExtension), isRedacted)
-// 	err := client.Login(*discordAppID)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	activity := client.Activity{
-// 		LargeImage: extensionImage,
-// 		SmallImage: "https://www.iconarchive.com/show/papirus-apps-icons-by-papirus-team/nvim-icon.html",
-// 		SmallText:  "NeoVim the best editor ever",
-// 		Details:    "Idle",
-// 		Timestamps: &client.Timestamps{
-// 			Start: t,
-// 		},
-// 	}
-// 	if gitRepo != nil || !isRedacted {
-// 		activity.Details = fmt.Sprintf("Workspace: %s", *gitRepo)
-// 	} else if isRedacted {
-// 		activity.Details = ""
-// 	}
-// 	if filename != nil {
-// 		if isRedacted {
-// 			activity.State = "[REDACTED]"
-// 		} else {
-// 			activity.State = fmt.Sprintf("Editing: %s", *filename)
-// 		}
-// 	}
-// 	err = client.SetActivity(activity)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
 func SetActivity(conn net.Conn, activity string, id string, startTime int64) error {
 	if conn == nil {
 		return fmt.Errorf("discord not connected")
 	}
+	var printOnc sync.Once
 	jsonPart := strings.TrimPrefix(activity, "connect:")
 	var act Activity
 	if err := json.Unmarshal([]byte(jsonPart), &act); err != nil {
@@ -102,6 +61,8 @@ func SetActivity(conn net.Conn, activity string, id string, startTime int64) err
 	if err != nil {
 		return err
 	}
-	fmt.Println("Discord Connect")
+	printOnc.Do(func() {
+		fmt.Println("Discord Connect")
+	})
 	return nil
 }

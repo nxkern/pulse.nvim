@@ -4,7 +4,6 @@ function M.setup(state)
     vim.api.nvim_create_autocmd({ 'BufEnter', 'BufReadPost' }, {
         callback = function()
             if vim.bo.filetype == "minifiles" then
-                vim.notify("In minifiles", vim.log.levels.WARN)
                 return
             end
             local data = vim.json.encode({
@@ -14,7 +13,9 @@ function M.setup(state)
                     large_image = string.format(
                         "https://raw.githubusercontent.com/circles-00/nvim-discord-status/refs/heads/main/assets/icons/%s.png",
                         (vim.bo.filetype == "" and "idle" or vim.bo.filetype)),
+                    large_text = (vim.bo.filetype == "" and "text" or vim.bo.filetype),
                     small_image = "https://icons.iconarchive.com/icons/papirus-team/papirus-apps/256/nvim-icon.png",
+                    small_text = "The Best Editor Neovim"
                 }
             })
             if state.job_id then
