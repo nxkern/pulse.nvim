@@ -19,7 +19,9 @@ import (
 )
 
 var (
-	re = regexp.MustCompile(`:\d{1,4}`)
+	re         = regexp.MustCompile(`:\d{1,4}`)
+	lastSentAt time.Time
+	pending    []byte
 )
 
 const (
@@ -69,6 +71,7 @@ func main() {
 		}
 	}
 	tim := time.Now().UnixMilli()
+	lastSentAt = time.Now()
 	connWSocketServer := internal.HandleWs(serverAddr, err, validateToken, isLocalhost, config)
 	defer connWSocketServer.Close()
 	go handleIdleTimeout(validateToken, fmt.Sprintf("https://%s", cleanUrl(serverAddr)))
@@ -102,6 +105,23 @@ func main() {
 			}
 		}
 	}
+	go func() {
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+		for range ticker.C {
+			if len(pending) > 0 && !flagDiscordIPC && time.Since(lastSentAt) > 3 * time.Second {
+					id, err := utils.DynamicUuid()
+					if err != nil {
+						id = strconv.Itoa(rand.Int())
+					}
+					if err := discord.GetActivity(connDiscordIPC, pending, id, tim); err != nil {
+						fmt.Fprintf(os.Stderr, "pulse: error set activity: %v", err)
+					} else {
+						lastSentAt = time.Now()
+					}
+			}
+		}
+	}()
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
@@ -109,7 +129,6 @@ func main() {
 		if len(line) == 0 {
 			continue
 		}
-
 		if bytes.Contains(line, []byte("wsServer")) {
 			frame := internal.PrepareData(line)
 			_, err := connWSocketServer.Write(frame)
@@ -118,13 +137,7 @@ func main() {
 			}
 		}
 		if bytes.Contains(line, []byte("connect:")) && !flagDiscordIPC {
-			id, err := utils.DynamicUuid()
-			if err != nil {
-				id = strconv.Itoa(rand.Int())
-			}
-			if err := discord.SetActivity(connDiscordIPC, string(line), id, tim); err != nil {
-				fmt.Fprintf(os.Stderr, "error: set activity %v", err)
-			}
+			pending = bytes.Clone(line)
 		}
 	}
 }

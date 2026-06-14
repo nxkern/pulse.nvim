@@ -9,14 +9,20 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 func GetKnowLangs() map[string]string {
 	return map[string]string{
-		"nodemon.json":           "nodemon",
-		"package.json":           "npm",
-		"turbo.json":             "turbo",
-		"/(vercel|now)\\.json/i": "vercel",
+		"LICENSE":      "LICENSE",
+		"minifiles":    "managerFile",
+		"FTerm":        "term",
+		"💤":            "idle",
+		"homepage":     "homepage",
+		"nodemon.json": "nodemon",
+		"package.json": "npm", "turbo.json": "turbo",
+		"/(vercel|now)\\.json/i":                                 "vercel",
 		"/\\.prettier((rc)|(\\.(toml|yml|yaml|json|js))?$){2}/i": "prettier",
 		"/\\.eslint((rc|ignore)|(\\.(json|js))?$){2}/i":          "eslint",
 		"/\\.(now|vercel)ignore/i":                               "vercel",
@@ -152,6 +158,8 @@ func GetKnowLangs() map[string]string {
 		"/^Gemfile(\\.lock)?$/i":                                  "gemfile",
 		"/^\\.git|^\\.keep$|\\.mailmap$/i":                        "git",
 		".go":                                                     "go",
+		"go.sum":                                                  "go",
+		"go.mod":                                                  "go",
 		".gd":                                                     "godot",
 		".gr":                                                     "grain",
 		".gradle":                                                 "gradle",
@@ -196,6 +204,7 @@ func GetKnowLangs() map[string]string {
 		".mjs":                     "js",
 		".js.map":                  "jsmap",
 		".json":                    "json",
+		".lock":                    "json",
 		".jsonc":                   "json",
 		".jsx":                     "jsx",
 		".jule":                    "jule",
@@ -430,7 +439,11 @@ func SendHandshake(conn net.Conn, discordAppID string) error {
 	binary.Write(buf, binary.LittleEndian, length)
 	buf.Write([]byte(payload))
 	_, err := conn.Write(buf.Bytes())
-	return err
+	if err != nil {
+		return err
+	}
+	fmt.Println("Connect Discord")
+	return nil
 }
 
 func DynamicUuid() (string, error) {
@@ -441,4 +454,29 @@ func DynamicUuid() (string, error) {
 	}
 	id := hex.EncodeToString(bytes)
 	return id, nil
+}
+
+func DetectingLang(filename string, langs map[string]string) string {
+	if val, ok := langs[filename]; ok {
+		return val
+	}
+	for pattern, lang := range langs {
+		_, isValid := strings.CutPrefix(pattern, "/")
+		if isValid {
+			result := strings.TrimPrefix(strings.TrimPrefix(pattern, "/"), "/")
+			reStr := strings.TrimSuffix(result, "/i")
+			matched, _ := regexp.MatchString(reStr, filename)
+			if matched {
+				return lang
+			}
+		}
+		if val, ok := langs[filename]; ok {
+			return val
+		}
+	}
+	_, ext, _ := strings.Cut(filename, ".")
+	if val, ok := langs[fmt.Sprintf(".%s", ext)]; ok {
+		return val
+	}
+	return ""
 }

@@ -36,7 +36,7 @@ function M.setup(opts)
     })
 
     require("pulse.wsServer.wsServer").setup(opts, state)
-    require("pulse.discord.discordIPC").setup(state)
+    require("pulse.discord.discordIPC").setup(state, opts)
 end
 
 return M

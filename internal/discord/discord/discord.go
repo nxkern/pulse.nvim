@@ -4,44 +4,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
+	"io"
 	"net"
 	"os"
-	"strings"
-	"sync"
 )
 
-type Activity struct {
-	Details   string    `json:"details"`
-	State     string    `json:"state"`
-	Assets    *Assets   `json:"assets,omitempty"`
-	Timestams *TimeStap `json:"timestamps,omitempty"`
-}
 
-type Assets struct {
-	LargeImage     string `json:"large_image"`
-	LargeImageText string `json:"large_text,omitempty"`
-	SmallImage     string `json:"small_image"`
-	SmallImageText string `json:"small_text,omitempty"`
-}
-
-type TimeStap struct {
-	Start int64 `json:"start,omitempty"`
-}
-
-func SetActivity(conn net.Conn, activity string, id string, startTime int64) error {
-	if conn == nil {
-		return fmt.Errorf("discord not connected")
-	}
-	var printOnc sync.Once
-	jsonPart := strings.TrimPrefix(activity, "connect:")
-	var act Activity
-	if err := json.Unmarshal([]byte(jsonPart), &act); err != nil {
-		return err
-	}
-	act.Timestams = &TimeStap{
-		Start: startTime,
-	}
+func SetActivity(conn net.Conn, act Activity, id string) error {
 	data := map[string]any{
 		"cmd": "SET_ACTIVITY",
 		"args": map[string]any{
@@ -61,8 +30,14 @@ func SetActivity(conn net.Conn, activity string, id string, startTime int64) err
 	if err != nil {
 		return err
 	}
-	printOnc.Do(func() {
-		fmt.Println("Discord Connect")
-	})
+	respHeader := make([]byte, 8)
+	if _, err := io.ReadFull(conn, respHeader); err != nil {
+		return err
+	}
+	lengthJson := binary.LittleEndian.Uint32(respHeader[4:8])
+	respPayload := make([]byte, lengthJson)
+	if _, err := io.ReadFull(conn, respPayload); err != nil {
+		return err
+	}
 	return nil
 }
