@@ -4,7 +4,10 @@ function M.setup(state)
     local data = vim.json.encode({
         details = "Editing: " .. vim.fn.expand("%:t"),
         state = "Project: " .. vim.fn.fnamemodify(path, ":t"),
-        large_image = "https://icons.iconarchive.com/icons/papirus-team/papirus-apps/256/nvim-icon.png"
+        assets = {
+            large_image = "https://icons.iconarchive.com/icons/papirus-team/papirus-apps/256/nvim-icon.png",
+            small_image = "https://icons.iconarchive.com/icons/papirus-team/papirus-apps/256/nvim-icon.png",
+        }
     })
     if state.job_id then
         local success, _ = pcall(vim.fn.chansend, state.job_id, "connect:" .. data .. "\n")

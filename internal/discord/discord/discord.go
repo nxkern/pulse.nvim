@@ -8,67 +8,68 @@ import (
 	"net"
 	"os"
 	"strings"
-	"time"
-
-	"codeberg.org/Nxus/pulse.nvim/internal/discord/utils"
-	"github.com/hugolgst/rich-go/client"
 )
 
 type Activity struct {
-	Details    string    `json:"details"`
-	State      string    `json:"state"`
-	LargeImage string    `json:"large_image"`
-	Timestams  *TimeStap `json:"timesptamps,omitempty"`
+	Details   string    `json:"details"`
+	State     string    `json:"state"`
+	Assets    *Assets   `json:"assets,omitempty"`
+	Timestams *TimeStap `json:"timesptamps,omitempty"`
+}
+
+type Assets struct {
+	LargeImage string `json:"large_image"`
+	SmallImage string `json:"small_image"`
 }
 
 type TimeStap struct {
 	Start int64 `json:"start,omitempty"`
 }
 
-func UpdateDiscordPresence(discordAppID *string, t *time.Time, filename *string, gitRepo *string, isRedacted bool) error {
-	if discordAppID == nil || len(*discordAppID) == 0 {
-		panic("Discord App ID is required")
-	}
-
-	fileExtension := ""
-	if filename != nil {
-		fileExtensionParts := strings.Split(*filename, ".")
-		if len(fileExtensionParts) > 1 {
-			fileExtension = fileExtensionParts[len(fileExtensionParts)-1]
-		}
-	}
-	extensionImage := utils.GetLanguageUrl(fmt.Sprintf(".%s", fileExtension), isRedacted)
-	err := client.Login(*discordAppID)
-	if err != nil {
-		return err
-	}
-	activity := client.Activity{
-		LargeImage: extensionImage,
-		SmallImage: "https://www.iconarchive.com/show/papirus-apps-icons-by-papirus-team/nvim-icon.html",
-		SmallText:  "NeoVim the best editor ever",
-		Details:    "Idle",
-		Timestamps: &client.Timestamps{
-			Start: t,
-		},
-	}
-	if gitRepo != nil || !isRedacted {
-		activity.Details = fmt.Sprintf("Workspace: %s", *gitRepo)
-	} else if isRedacted {
-		activity.Details = ""
-	}
-	if filename != nil {
-		if isRedacted {
-			activity.State = "[REDACTED]"
-		} else {
-			activity.State = fmt.Sprintf("Editing: %s", *filename)
-		}
-	}
-	err = client.SetActivity(activity)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+// func UpdateDiscordPresence(discordAppID *string, t *time.Time, filename *string, gitRepo *string, isRedacted bool) error {
+// 	if discordAppID == nil || len(*discordAppID) == 0 {
+// 		panic("Discord App ID is required")
+// 	}
+//
+// 	fileExtension := ""
+// 	if filename != nil {
+// 		fileExtensionParts := strings.Split(*filename, ".")
+// 		if len(fileExtensionParts) > 1 {
+// 			fileExtension = fileExtensionParts[len(fileExtensionParts)-1]
+// 		}
+// 	}
+// 	extensionImage := utils.GetLanguageUrl(fmt.Sprintf(".%s", fileExtension), isRedacted)
+// 	err := client.Login(*discordAppID)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	activity := client.Activity{
+// 		LargeImage: extensionImage,
+// 		SmallImage: "https://www.iconarchive.com/show/papirus-apps-icons-by-papirus-team/nvim-icon.html",
+// 		SmallText:  "NeoVim the best editor ever",
+// 		Details:    "Idle",
+// 		Timestamps: &client.Timestamps{
+// 			Start: t,
+// 		},
+// 	}
+// 	if gitRepo != nil || !isRedacted {
+// 		activity.Details = fmt.Sprintf("Workspace: %s", *gitRepo)
+// 	} else if isRedacted {
+// 		activity.Details = ""
+// 	}
+// 	if filename != nil {
+// 		if isRedacted {
+// 			activity.State = "[REDACTED]"
+// 		} else {
+// 			activity.State = fmt.Sprintf("Editing: %s", *filename)
+// 		}
+// 	}
+// 	err = client.SetActivity(activity)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
 func SetActivity(conn net.Conn, activity string, id string, startTime int64) error {
 	if conn == nil {
