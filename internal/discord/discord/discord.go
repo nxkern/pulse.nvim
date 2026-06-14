@@ -14,7 +14,7 @@ type Activity struct {
 	Details   string    `json:"details"`
 	State     string    `json:"state"`
 	Assets    *Assets   `json:"assets,omitempty"`
-	Timestams *TimeStap `json:"timesptamps,omitempty"`
+	Timestams *TimeStap `json:"timestamps,omitempty"`
 }
 
 type Assets struct {

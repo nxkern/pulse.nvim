@@ -9,17 +9,6 @@ local function get_os_arch()
     return os, arch
 end
 
-local function fetch_latest_tag()
-    local ok, resp = pcall(vim.fn.system,
-        { "curl", "-s", "https://codeberg.org/api/v1/repos/Nxus/pulse.nvim/releases/latest" })
-    if not ok then return "" end
-    local ok2, data = pcall(vim.json.decode, resp)
-    if ok2 and data and data.tag_name then
-        return data.tag_name
-    end
-    return ""
-end
-
 local function download_binary(tag, bin_dir, bin_path, os_name)
     local _, arch = get_os_arch()
     local binary_name = string.format("pulse.nvim_%s_%s", os_name, arch)
@@ -67,23 +56,37 @@ function M.setup()
     -- fast path: binary exists
     if vim.fn.executable(bin_path) == 1 then
         vim.defer_fn(function()
-            local tag = fetch_latest_tag()
-            if tag == "" then return end
-            local local_ver = read_version_file(version_file)
-            if tag ~= local_ver then
-                if download_binary(tag, bin_dir, bin_path, os_name) then
-                    write_version_file(version_file, tag)
-                end
-            end
+            vim.fn.jobstart({
+                "curl", "-s", "https://codeberg.org/api/v1/repos/Nxus/pulse.nvim/releases/latest"
+            }, {
+                stdout_buffered = true,
+                on_stdout = function(_, data)
+                    if not data or #data == 0 then return end
+                    local ok, decoded = pcall(vim.json.decode, table.concat(data, ""))
+                    if not ok or not decoded or not decoded.tag_name then return end
+
+                    local local_ver = read_version_file(version_file)
+                    if decoded.tag_name ~= local_ver then
+                        if download_binary(decoded.tag_name, bin_dir, bin_path, os_name) then
+                            write_version_file(version_file, decoded.tag_name)
+                        end
+                    end
+                end,
+            })
         end, 5000)
         return bin_path
     end
 
     -- binary doesn't exist: download synchronously
-    local tag = fetch_latest_tag()
-    if tag ~= "" and download_binary(tag, bin_dir, bin_path, os_name) then
-        write_version_file(version_file, tag)
-        return bin_path
+    local ok, resp = pcall(vim.fn.system,
+        { "curl", "-s", "https://codeberg.org/api/v1/repos/Nxus/pulse.nvim/releases/latest" })
+    if ok then
+        local ok2, data = pcall(vim.json.decode, resp)
+        if ok2 and data and data.tag_name ~= ""
+            and download_binary(data.tag_name, bin_dir, bin_path, os_name) then
+            write_version_file(version_file, data.tag_name)
+            return bin_path
+        end
     end
 
     vim.notify("Pulse: Binary not found and download failed", vim.log.levels.ERROR)

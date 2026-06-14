@@ -1,5 +1,6 @@
 local M = {}
 function M.setup(state)
+    if vim.bo.filetype == "minifiles" then return end
     local path = vim.fn.getcwd()
     local data = vim.json.encode({
         details = "Editing: " .. vim.fn.expand("%:t"),

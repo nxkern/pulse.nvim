@@ -69,10 +69,6 @@ func main() {
 		}
 	}
 	tim := time.Now().UnixMilli()
-	id, err := utils.DynamicUuid()
-	if err != nil {
-		id = strconv.Itoa(rand.Int())
-	}
 	connWSocketServer := internal.HandleWs(serverAddr, err, validateToken, isLocalhost, config)
 	defer connWSocketServer.Close()
 	go handleIdleTimeout(validateToken, fmt.Sprintf("https://%s", cleanUrl(serverAddr)))
@@ -122,6 +118,10 @@ func main() {
 			}
 		}
 		if bytes.Contains(line, []byte("connect:")) && !flagDiscordIPC {
+			id, err := utils.DynamicUuid()
+			if err != nil {
+				id = strconv.Itoa(rand.Int())
+			}
 			if err := discord.SetActivity(connDiscordIPC, string(line), id, tim); err != nil {
 				fmt.Fprintf(os.Stderr, "error: set activity %v", err)
 			}
