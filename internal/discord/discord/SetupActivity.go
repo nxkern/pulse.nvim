@@ -37,12 +37,15 @@ func ConnectIPC() net.Conn  {
 		conn net.Conn
 		err error
 	)
-	for n := range 9 {
+	for n := range 10 {
 		conn, err = net.Dial("unix", fmt.Sprintf("%s/discord-ipc-%d", runtimeDir,n))
 		if err != nil {
 			continue
 		}
 		break
+	}
+	if conn == nil {
+		fmt.Fprint(os.Stderr, "error conn nil")
 	}
 	return conn
 }

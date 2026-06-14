@@ -121,7 +121,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
 			}
 		}
-		if bytes.Contains(line, []byte("connect:")) {
+		if bytes.Contains(line, []byte("connect:")) && !flagDiscordIPC {
 			if err := discord.SetActivity(connDiscordIPC, string(line), id, tim); err != nil {
 				fmt.Fprintf(os.Stderr, "error: set activity %v", err)
 			}

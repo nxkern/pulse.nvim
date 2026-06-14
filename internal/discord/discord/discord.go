@@ -71,6 +71,9 @@ func UpdateDiscordPresence(discordAppID *string, t *time.Time, filename *string,
 }
 
 func SetActivity(conn net.Conn, activity string, id string, startTime int64) error {
+	if conn == nil {
+		return fmt.Errorf("discord not connected")
+	}
 	jsonPart := strings.TrimPrefix(activity, "connect:")
 	var act Activity
 	if err := json.Unmarshal([]byte(jsonPart), &act); err != nil {
