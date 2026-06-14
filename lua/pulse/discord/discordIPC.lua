@@ -18,13 +18,7 @@ function M.setup(state)
     vim.api.nvim_create_autocmd({ 'BufEnter', 'BufReadPost' }, {
         callback = function()
             data = vim.json.encode({
-                details = function()
-                    if vim.fn.expand("%:t") == "" then
-                        return "HomePage"
-                    else
-                        return "Editing: " .. vim.fn.expand("%:t")
-                    end
-                end,
+                details =(vim.fn.expand("%:t") == "" and "HomePage" or "Editing: " .. vim.fn.expand("%:t")),
                 state = "Workspace: " .. vim.fn.fnamemodify(path, ":t"),
                 assets = {
                     large_image = string.format(
