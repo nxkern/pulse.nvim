@@ -98,5 +98,9 @@ func SetActivity(conn net.Conn, activity string, id string, startTime int64) err
 	binary.Write(buf, binary.LittleEndian, length)
 	buf.Write(payload)
 	_, err := conn.Write(buf.Bytes())
-	return err
+	if err != nil {
+		return err
+	}
+	fmt.Println("Discord Connect")
+	return nil
 }
