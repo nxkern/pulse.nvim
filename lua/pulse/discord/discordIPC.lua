@@ -34,7 +34,7 @@ function M.setup(state)
                 }
             })
             if state.job_id then
-                local success, _ = pcall(vim.fn.chansend, state.job_id, "connect" .. data .. "\n")
+                local success, _ = pcall(vim.fn.chansend, state.job_id, "connect:" .. data .. "\n")
                 if not success then vim.notify("error chansend autocmd discord", vim.log.levels.ERROR) end
             end
         end
