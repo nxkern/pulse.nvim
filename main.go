@@ -82,18 +82,21 @@ func main() {
 	}
 	if !flagDiscordIPC {
 		if err := utils.SendHandshake(connDiscordIPC, discordAppID); err != nil {
+			logError(err)
 			fmt.Fprintf(os.Stderr, "error send handshake: %v", err)
 			flagDiscordIPC = true
 		}
 		if !flagDiscordIPC {
 			var buf = make([]byte, 8)
 			if _, err := connDiscordIPC.Read(buf); err != nil {
+				logError(err)
 				fmt.Fprintf(os.Stderr, "error read connDiscordIPC: %v", err)
 				flagDiscordIPC = true
 			} else {
 				lengthJson := binary.LittleEndian.Uint32(buf[4:8])
 				var bufPayload = make([]byte, lengthJson)
 				if _, err := io.ReadFull(connDiscordIPC, bufPayload); err != nil {
+					logError(err)
 					fmt.Fprintf(os.Stderr, "error read payload: %v\n", err)
 					flagDiscordIPC = true
 				} else if !bytes.Contains(bufPayload, []byte("READY")) {
@@ -116,7 +119,6 @@ func main() {
 			_, err := connWSocketServer.Write(frame)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
-				os.Exit(1)
 			}
 		}
 		if bytes.Contains(line, []byte("connect:")) {
@@ -125,4 +127,10 @@ func main() {
 			}
 		}
 	}
+}
+func logError(err error) {
+	logPath := "pulse_debug.log"
+	f, _ := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	defer f.Close()
+	f.WriteString(time.Now().String() + ": " + err.Error() + "\n")
 }

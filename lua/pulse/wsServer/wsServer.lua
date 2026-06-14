@@ -1,5 +1,5 @@
 local M = {}
-function M.setup(opts,state)
+function M.setup(opts, state)
     opts = require("pulse.strictOpts").setup(opts)
 
     local commands = require("pulse.commands")
@@ -34,7 +34,8 @@ function M.setup(opts,state)
         end)
     )
 
-    vim.fn.chansend(state.job_id, string.format('{ "status": "online", "file": "%s", "id": "wsServer"}\n', workspace))
+    if state.job_id then vim.fn.chansend(state.job_id,
+            string.format('{ "status": "online", "file": "%s", "id": "wsServer"}\n', workspace)) end
     state.currentStatus = "online"
 
     if not state.pulse_idle_timer then

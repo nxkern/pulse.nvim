@@ -3,7 +3,6 @@ function M.setup(opts)
     opts = require("pulse.strictOpts").setup(opts)
 
     local bin = require("pulse.binary").setup()
-
     if not bin or vim.fn.executable(bin) == 0 then
         vim.notify("Pulse: Binary not found or download failed", vim.log.levels.ERROR)
         return
@@ -31,6 +30,7 @@ function M.setup(opts)
             vim.notify(d[1], vim.log.levels.INFO)
         end,
         on_exit = function(_, c, _)
+            state.job_id = nil
             vim.notify("Process closed with code: " .. c, vim.log.levels.WARN)
         end,
     })
