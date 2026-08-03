@@ -474,8 +474,8 @@ func DetectingLang(filename string, langs map[string]string) string {
 			return val
 		}
 	}
-	_, ext, _ := strings.Cut(filename, ".")
-	if val, ok := langs[fmt.Sprintf(".%s", ext)]; ok {
+	ext := filepath.Ext(filename)
+	if val, ok := langs[ext]; ok {
 		return val
 	}
 	return ""

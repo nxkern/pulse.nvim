@@ -25,9 +25,11 @@ function M.setup(opts, state)
         --     vim.fn.chansend(state.job_id, '{ "status": "", "file": ""}\n')
         -- end
         vim.schedule_wrap(function()
-            if state.job_id and state.countError == 0 then
+            if state.job_id then
                 local success, _ = pcall(vim.fn.chansend, state.job_id, '{ "status": "", "file": "", "id": "wsServer"}\n')
-                if not success then
+                if success then
+                    state.countError = 0
+                else
                     state.countError = state.countError + 1
                 end
             end

@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"crypto/tls"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -11,6 +10,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 
 	"codeberg.org/Nxus/pulse.nvim/internal"
@@ -19,9 +19,15 @@ import (
 )
 
 var (
-	re         = regexp.MustCompile(`:\d{1,4}`)
-	lastSentAt time.Time
-	pending    []byte
+	re            = regexp.MustCompile(`:\d{1,4}`)
+	lastSentAt    time.Time
+	pending       []byte
+	wsMu          sync.Mutex
+	wsConn        *internal.WSConn
+	connecting    bool
+	serverAddr    string
+	validateToken string
+	isLocalhost   bool
 )
 
 const (
@@ -33,8 +39,7 @@ func handleIdleTimeout(key string, url string) {
 	defer ticker.Stop()
 	for range ticker.C {
 		if err := internal.Heartbeat(key, url); err != nil {
-			fmt.Println(err)
-			continue
+			logError(err)
 		}
 	}
 }
@@ -43,38 +48,120 @@ func cleanUrl(url string) string {
 	return re.ReplaceAllString(url, "")
 }
 
-func main() {
-	var (
-		err            error
-		serverAddr     string
-		validateToken  string
-		isLocalhost    bool
-		config         *tls.Config
-		flagDiscordIPC bool
-	)
+func connectWS() error {
+	wsMu.Lock()
+	if wsConn != nil || connecting {
+		wsMu.Unlock()
+		return nil
+	}
+	connecting = true
+	wsMu.Unlock()
 
-	if len(os.Args) > 1 {
-		if os.Args[1] == "" {
-			return
+	defer func() {
+		wsMu.Lock()
+		connecting = false
+		wsMu.Unlock()
+	}()
+
+	conn, err := internal.ConnectWS(serverAddr, validateToken, isLocalhost)
+	if err != nil {
+		return err
+	}
+	wsMu.Lock()
+	if wsConn == nil {
+		wsConn = conn
+	} else {
+		conn.Close()
+	}
+	wsMu.Unlock()
+	return nil
+}
+
+func watchWS() {
+	for {
+		wsMu.Lock()
+		conn := wsConn
+		wsMu.Unlock()
+
+		if conn == nil {
+			if err := connectWS(); err != nil {
+				logError(err)
+			}
+			time.Sleep(5 * time.Second)
+			continue
 		}
+
+		if err := conn.Read(); err != nil {
+			fmt.Fprintf(os.Stderr, "pulse: ws connection lost: %v\n", err)
+			wsMu.Lock()
+			if wsConn == conn {
+				wsConn = nil
+			}
+			wsMu.Unlock()
+			conn.Close()
+			time.Sleep(5 * time.Second)
+		}
+	}
+}
+
+func sendWS(line []byte) {
+	for attempt := 0; attempt < 2; attempt++ {
+		wsMu.Lock()
+		conn := wsConn
+		wsMu.Unlock()
+
+		if conn == nil {
+			if err := connectWS(); err != nil {
+				logError(err)
+			}
+			continue
+		}
+
+		frame := internal.PrepareData(line)
+		if err := conn.Write(frame); err != nil {
+			fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
+			wsMu.Lock()
+			if wsConn == conn {
+				wsConn = nil
+			}
+			wsMu.Unlock()
+			conn.Close()
+			continue
+		}
+		return
+	}
+}
+
+func main() {
+	if len(os.Args) > 1 && os.Args[1] != "" {
 		serverAddr = os.Args[1]
 	}
-
-	validateToken = ""
 	if len(os.Args) > 2 {
 		validateToken = os.Args[2]
 	}
-
-	if len(os.Args) > 3 {
-		if os.Args[3] == "true" {
-			isLocalhost = true
-		}
+	if len(os.Args) > 3 && os.Args[3] == "true" {
+		isLocalhost = true
 	}
+
 	tim := time.Now().UnixMilli()
 	lastSentAt = time.Now()
-	connWSocketServer := internal.HandleWs(serverAddr, err, validateToken, isLocalhost, config)
-	defer connWSocketServer.Close()
+
+	if err := connectWS(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error connection: %v\n", err)
+		os.Exit(1)
+	}
+	defer func() {
+		wsMu.Lock()
+		if wsConn != nil {
+			wsConn.Close()
+		}
+		wsMu.Unlock()
+	}()
+
+	go watchWS()
 	go handleIdleTimeout(validateToken, fmt.Sprintf("https://%s", cleanUrl(serverAddr)))
+
+	flagDiscordIPC := false
 	connDiscordIPC := discord.ConnectIPC()
 	if connDiscordIPC == nil {
 		flagDiscordIPC = true
@@ -109,16 +196,16 @@ func main() {
 		ticker := time.NewTicker(500 * time.Millisecond)
 		defer ticker.Stop()
 		for range ticker.C {
-			if len(pending) > 0 && !flagDiscordIPC && time.Since(lastSentAt) > 3 * time.Second {
-					id, err := utils.DynamicUuid()
-					if err != nil {
-						id = strconv.Itoa(rand.Int())
-					}
-					if err := discord.GetActivity(connDiscordIPC, pending, id, tim); err != nil {
-						fmt.Fprintf(os.Stderr, "pulse: error set activity: %v", err)
-					} else {
-						lastSentAt = time.Now()
-					}
+			if len(pending) > 0 && !flagDiscordIPC && time.Since(lastSentAt) > 3*time.Second {
+				id, err := utils.DynamicUuid()
+				if err != nil {
+					id = strconv.Itoa(rand.Int())
+				}
+				if err := discord.GetActivity(connDiscordIPC, pending, id, tim); err != nil {
+					fmt.Fprintf(os.Stderr, "pulse: error set activity: %v", err)
+				} else {
+					lastSentAt = time.Now()
+				}
 			}
 		}
 	}()
@@ -130,11 +217,7 @@ func main() {
 			continue
 		}
 		if bytes.Contains(line, []byte("wsServer")) {
-			frame := internal.PrepareData(line)
-			_, err := connWSocketServer.Write(frame)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
-			}
+			sendWS(line)
 		}
 		if bytes.Contains(line, []byte("connect:")) && !flagDiscordIPC {
 			pending = bytes.Clone(line)
